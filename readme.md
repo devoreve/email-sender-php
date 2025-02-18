@@ -80,3 +80,48 @@ $mailerService->send($mailFrom, $mailTo, $subject, $body);
 Cela fonctionne bien en l'état mais plusieurs problèmes peuvent se poser :
 * Nous utilisons actuellement beaucoup les tableaux pour stocker des données (pour l'adresse et le nom du destinataire par exemple) mais ces dernières ne sont pas contrôlées => Que se passe t-il si je rentre une email invalide par exemple ?
 * La classe PHPMailer est instanciée directement dans le service => Que se passe t-il si l'on veut changer de bibliothèque d'envoi de mail ?
+
+### Améliorations
+
+#### ValueObject
+
+Pour s'assurer un meilleur contrôle des données, au lieu de passer par un tableau nous utiliserons des classes directement.
+Voici un exemple de la classe **EmailAddress** qui encapsule la logique liée à l'adresse email (une adresse et un nom correspondant) ainsi que les contrôles nécessaires (l'adresse email est-elle valide ?).
+
+```php
+class EmailAddress
+{
+    public function __construct(private string $email, private string $name)
+    {
+        $this->setEmail($email);
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(string $email): void
+    {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException("Adresse email invalide : {$email}");
+        }
+
+        $this->email = $email;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+}
+```
+
+Nous avons également créé la classe **EmailConfig** permettant de gérer les données de configuration du serveur SMTP et la classe **EmailContent** encapsulant les données de l'email.
+
+**Conclusion** : Grâce à l'utilisation des classes en remplacement des tableaux, nous avons un meilleur contrôle sur les données en entrée.
