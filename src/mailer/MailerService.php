@@ -2,6 +2,9 @@
 
 namespace App\Mailer;
 
+use App\Mailer\ValueObject\EmailAddress;
+use App\Mailer\ValueObject\EmailConfig;
+use App\Mailer\ValueObject\EmailContent;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -9,34 +12,31 @@ class MailerService
 {
     private PHPMailer $mailer;
 
-    public function __construct(array $config)
+    public function __construct(EmailConfig $config)
     {
         $this->mailer = new PHPMailer(true);
 
         $this->mailer->isSMTP();
-        $this->mailer->Host = $config['SMTP_HOST'];
+        $this->mailer->Host = $config->getHost();
         $this->mailer->SMTPAuth = true;
-        $this->mailer->Port = $config['SMTP_PORT'];
-        $this->mailer->Username = $config['SMTP_USERNAME'];
-        $this->mailer->Password = $config['SMTP_PASSWORD'];
+        $this->mailer->Port = $config->getPort();
+        $this->mailer->Username = $config->getUsername();
+        $this->mailer->Password = $config->getPassword();
     }
 
-    public function send(array $mailFrom, array $mailTo, string $subject, string $body): void
+    public function send(EmailAddress $mailFrom, EmailAddress $mailTo, EmailContent $emailContent): void
     {
         try {
-            [$address, $name] = $mailFrom;
-            $this->mailer->setFrom($address, $name);
+            $this->mailer->setFrom($mailFrom->getEmail(), $mailFrom->getName());
+            $this->mailer->addAddress($mailTo->getEmail(), $mailTo->getName());
 
-            [$address, $name] = $mailTo;
-            $this->mailer->addAddress($address, $name);
-
-            $this->mailer->isHTML(true);
-            $this->mailer->Subject = $subject;
-            $this->mailer->Body = $body;
+            $this->mailer->isHTML($emailContent->isHtml());
+            $this->mailer->Subject = $emailContent->getSubject();
+            $this->mailer->Body = $emailContent->getBody();
 
             $this->mailer->send();
         } catch (Exception $e) {
-            echo "Une erreur est survenue : $this->mailer->ErrorInfo";
+            var_dump($e->getMessage());
         }
     }
 }

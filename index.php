@@ -1,6 +1,9 @@
 <?php
 
 use App\Mailer\MailerService;
+use App\Mailer\ValueObject\EmailConfig;
+use App\Mailer\ValueObject\EmailAddress;
+use App\Mailer\ValueObject\EmailContent;
 
 require 'vendor/autoload.php';
 
@@ -8,13 +11,16 @@ require 'vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 $config = require 'config.php';
+$config = new EmailConfig($config['host'], $config['port'], $config['username'], $config['password']);
 
 // Informations de l'email
-$mailFrom = ['cedric@prof.dev', 'Cédric Prof'];
-$mailTo = ['cda@3wa.dev', 'CDA 33'];
-$subject = 'Envoi de mail';
-$body = 'Ceci est un email au <strong>format HTML</strong> !';
+$mailFrom = new EmailAddress('cedric@prof.dev', 'Cédric Prof');
+$mailTo = new EmailAddress('cda@3wa.dev', 'CDA 33');
+$mailContent = new EmailContent(
+    'Envoi de mail',
+    'Ceci est un email au <strong>format HTML</strong> !'
+);
 
 // Envoi de l'email grâce au service
 $mailerService = new MailerService($config);
-$mailerService->send($mailFrom, $mailTo, $subject, $body);
+$mailerService->send($mailFrom, $mailTo, $mailContent);
