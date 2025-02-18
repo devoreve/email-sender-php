@@ -253,3 +253,83 @@ $mailerService->send($mailFrom, $mailTo, $mailContent);
 ```
 
 **Conclusion** : Grâce à l'injection de dépendance et au design pattern adapter, nous avons un système flexible qui nous permet de changer facilement de bibliothèque d'envoi de mail. Si nous souhaitons rajouter une autre bibliothèque externe pour gérer l'envoi d'email, il nous suffira simplement de créer un nouvel adapter.
+
+#### Factory
+
+Maintenant notre code nous permet bien de changer facilement de bibliothèque de manière flexible mais il reste un léger bémol dans notre code : l'adapter s'occupe de créer l'instance du mailer et d'envoyer le mail, cassant par la même occasion le principe de responsabilité unique.
+Si plus tard nous devons modifier la configuration du mailer, nous serons obligés de modifier l'adapter, ce qui n'est pas idéal.
+
+```php
+private PHPMailer $mailer;
+
+public function __construct(EmailConfig $config)
+{
+    $this->mailer = new PHPMailer(true);
+
+    $this->mailer->isSMTP();
+    $this->mailer->Host = $config->getHost();
+    $this->mailer->SMTPAuth = true;
+    $this->mailer->Port = $config->getPort();
+    $this->mailer->Username = $config->getUsername();
+    $this->mailer->Password = $config->getPassword();
+}
+```
+
+Pour éviter cela nous allons utiliser le design pattern **Factory** : nous allons créer des classes chargées de l'instanciation de nos mailers.
+
+```php
+class PHPMailerFactory
+{
+    public static function create(EmailConfig $config): PHPMailer
+    {
+        $mailer = new PHPMailer(true);
+
+        $mailer->isSMTP();
+        $mailer->Host = $config->getHost();
+        $mailer->SMTPAuth = true;
+        $mailer->Port = $config->getPort();
+        $mailer->Username = $config->getUsername();
+        $mailer->Password = $config->getPassword();
+
+        return $mailer;
+    }
+}
+```
+
+La classe ci-dessus se charge d'instancier PHPMailer. Nous pouvons ensuite créer une factory pour gérer l'instanciation des adapters :
+
+```php
+enum MailerType
+{
+    case PHPMailer;
+    case SwiftMailer;
+}
+
+class MailerAdapterFactory
+{
+    public static function create(EmailConfig $config, MailerType $mailerType): MailerInterface
+    {
+        return match ($mailerType) {
+            MailerType::PHPMailer => new PHPMailerAdapter(PHPMailerFactory::create($config)),
+            MailerType::SwiftMailer => new SwiftMailerAdapter(SwiftMailerFactory::create($config)),
+            default => throw new \InvalidArgumentException("Type de mailer inconnu : $mailerType->name")
+        };
+    }
+}
+```
+
+Grâce à ces factory il nous est possible de récupérer facilement les adapter de la bibliothèque souhaitée :
+
+```php
+// On peut utiliser PHPMailer
+$mailer = MailerAdapterFactory::create($config, MailerType::PHPMailer);
+
+// Ou utiliser SwiftMailer
+$mailer = MailerAdapterFactory::create($config, MailerType::SwiftMailer);
+
+// Envoi de l'email grâce au service dans lequel on passe l'adapter en paramètre
+$mailerService = new MailerService($mailer);
+$mailerService->send($mailFrom, $mailTo, $mailContent);
+```
+
+**Conclusion** : Grâce au design pattern factory, nous avons une meilleure séparation des tâches dans chacune de nos classes. 
