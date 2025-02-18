@@ -1,7 +1,7 @@
 <?php
 
-use App\Mailer\adapter\PHPMailerAdapter;
-use App\Mailer\adapter\SwiftMailerAdapter;
+use App\Mailer\Factory\MailerAdapterFactory;
+use App\Mailer\Factory\MailerType;
 use App\Mailer\MailerService;
 use App\Mailer\ValueObject\EmailConfig;
 use App\Mailer\ValueObject\EmailAddress;
@@ -25,11 +25,12 @@ try {
     );
 
     // Récupération de l'adapter
+
     // On peut utiliser PHPMailer
-    $mailer = new PHPMailerAdapter($config);
+    $mailer = MailerAdapterFactory::create($config, MailerType::PHPMailer);
 
     // Ou utiliser SwiftMailer
-    $mailer = new SwiftMailerAdapter($config);
+    $mailer = MailerAdapterFactory::create($config, MailerType::SwiftMailer);
 
     // Envoi de l'email grâce au service dans lequel on passe l'adapter en paramètre
     $mailerService = new MailerService($mailer);
